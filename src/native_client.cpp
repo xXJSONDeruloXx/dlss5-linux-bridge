@@ -102,6 +102,9 @@ bool NativeHostConnect(NativeHostInfo* info) {
     info->source = static_cast<std::uint32_t>(packet.a[1]);
     info->tensors = static_cast<std::uint32_t>(packet.a[2]);
     info->capabilities = packet.a[3];
+    info->stage1_present = static_cast<std::uint32_t>(packet.a[4]);
+    info->stage1_required = static_cast<std::uint32_t>(packet.a[5]);
+    info->auxiliary_tensors = static_cast<std::uint32_t>(packet.a[6]);
     std::memcpy(info->text, packet.text, sizeof(info->text));
     info->text[sizeof(info->text) - 1] = '\0';
   }

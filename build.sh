@@ -47,9 +47,9 @@ common_flags=(
   -ld3d12 -ldxgi
 
 "${compiler}" "${common_flags[@]}" \
-  src/core_proxy.cpp src/core_proxy.def \
+  src/core_proxy.cpp src/native_client.cpp src/core_proxy.def \
   -o "${output_dir}/_nvngx.dll" \
-  -ld3d12 -ldxgi
+  -ld3d12 -ldxgi -lws2_32
 
 echo "Built ${output_dir}/bridge-nvngx.dll"
 echo "Built ${output_dir}/_nvngx.dll"

@@ -148,9 +148,10 @@ void InitializeSnippets(unsigned long long application_id, const wchar_t* data_p
   if (native_host_ready) {
     const bool ping = NativeHostPing();
     native_host_ready = ping;
-    Log("native host connected=%d abi=%u source=%u tensors=%u caps=0x%llx info=%s",
+    Log("native host connected=%d abi=%u source=%u tensors=%u stage1=%u/%u auxiliary=%u caps=0x%llx info=%s",
         ping ? 1 : 0, native_host_info.abi, native_host_info.source,
-        native_host_info.tensors,
+        native_host_info.tensors, native_host_info.stage1_present,
+        native_host_info.stage1_required, native_host_info.auxiliary_tensors,
         static_cast<unsigned long long>(native_host_info.capabilities),
         native_host_info.text);
   }

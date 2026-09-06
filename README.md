@@ -11,6 +11,25 @@ The proxy intercepts the relevant D3D12 NGX calls, preserves the original DLSS
 path, evaluates `NVSDK_NGX_Feature_Reserved18` with the frame resources supplied
 by the game, and copies the neural result back to the expected output.
 
+## Native Linux runtime control path
+
+The `feat/linux-shared-runtime` branch can attach the Windows NGX proxy to the
+clean Linux `libdlssnr-native.so` host started by `dlssnr-proton`.
+
+The launcher supplies `DLSSNR_NATIVE_PORT` and `DLSSNR_NATIVE_TOKEN` to the
+Proton game. The proxy connects only to loopback, authenticates the session,
+queries ABI/model/device information, and keeps the connection for the process
+lifetime.
+
+When that host is present, the proxy deliberately skips executing the vendor
+`nvngx_dlssnr.dll` snippet in the Windows process. The Linux runtime owns and
+parses the user-provided model instead.
+
+This is currently a **control-plane milestone**. Native frame evaluation and
+D3D12/VKD3D resource transfer are not advertised, and the proxy retains the
+standard game output. The host capability mask is zero until an evaluation
+operation is implemented.
+
 ## Included
 
 - `src/core_proxy.cpp`: NGX forwarding proxy and DLSS/NR chaining logic.

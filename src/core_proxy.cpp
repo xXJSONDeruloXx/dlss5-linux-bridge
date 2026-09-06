@@ -13,6 +13,8 @@
 
 #include <nvsdk_ngx.h>
 
+#include "native_client.h"
+
 using Microsoft::WRL::ComPtr;
 
 namespace {
@@ -68,6 +70,8 @@ Shutdown nr_shutdown = nullptr;
 bool neural_ready = false;
 bool standard_ready = false;
 bool snippets_initialized = false;
+bool native_host_ready = false;
+NativeHostInfo native_host_info{};
 
 void Log(const char* format, ...) {
   FILE* file = std::fopen("dlssnr-proxy.log", "a");
@@ -144,6 +148,16 @@ void InitializeSnippets(unsigned long long application_id, const wchar_t* data_p
   neural_ready = NVSDK_NGX_SUCCEED(neural_result);
   Log("DLSSNR Init_Ext result=0x%08x ready=%d", neural_result,
       neural_ready ? 1 : 0);
+  native_host_ready = NativeHostConnect(&native_host_info);
+  if (native_host_ready) {
+    const bool ping = NativeHostPing();
+    native_host_ready = ping;
+    Log("native host connected=%d abi=%u source=%u tensors=%u caps=0x%llx info=%s",
+        ping ? 1 : 0, native_host_info.abi, native_host_info.source,
+        native_host_info.tensors,
+        static_cast<unsigned long long>(native_host_info.capabilities),
+        native_host_info.text);
+  }
   snippets_initialized = true;
 }
 
@@ -314,7 +328,11 @@ extern "C" NVSDK_NGX_Result ProxyCore_D3D12_CreateFeature(
     return standard_result;
   }
   if (!neural_ready) {
-    Log("DLSSNR create skipped: neural runtime unavailable");
+    if (native_host_ready) {
+      Log("DLSSNR native host is ready but native frame evaluation is not wired; keeping standard DLSS output");
+    } else {
+      Log("DLSSNR create skipped: neural runtime unavailable");
+    }
     features.emplace(*output_handle, std::move(state));
     return standard_result;
   }
@@ -506,6 +524,8 @@ extern "C" NVSDK_NGX_Result ProxyCore_D3D12_Shutdown1(ID3D12Device* input_device
   }
   standard_ready = false;
   snippets_initialized = false;
+  native_host_ready = false;
+  NativeHostDisconnect();
   device.Reset();
   // Direct snippet initialization shares process-global NGX state with the
   // core. Calling either the snippet or real-core shutdown after releasing the
@@ -527,6 +547,8 @@ extern "C" NVSDK_NGX_Result ProxyCore_D3D12_Shutdown() {
   neural_ready = false;
   standard_ready = false;
   snippets_initialized = false;
+  native_host_ready = false;
+  NativeHostDisconnect();
   device.Reset();
   Log("Shutdown completed; real-core shutdown intentionally skipped");
   return NVSDK_NGX_Result_Success;

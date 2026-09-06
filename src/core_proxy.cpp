@@ -125,11 +125,12 @@ bool EnsureRuntime() {
   nr_release = Resolve<Release>(bridge, "Bridge_Release");
   nr_shutdown = Resolve<Shutdown>(bridge, "Bridge_Shutdown");
   const bool complete = core_init && core_init_ext && core_get_feature_requirements &&
-                        core_create && core_evaluate &&
-                        core_release && dlss_init && dlss_create && dlss_evaluate &&
-                        dlss_release && nr_init && nr_create && nr_evaluate && nr_release &&
-                        nr_shutdown;
-  Log("runtime resolved complete=%d", complete ? 1 : 0);
+                        core_create && core_evaluate && core_release &&
+                        dlss_init && dlss_create && dlss_evaluate && dlss_release;
+  const bool vendor_neural_complete =
+      nr_init && nr_create && nr_evaluate && nr_release && nr_shutdown;
+  Log("runtime resolved complete=%d vendor_neural=%d", complete ? 1 : 0,
+      vendor_neural_complete ? 1 : 0);
   return complete;
 }
 
@@ -143,11 +144,6 @@ void InitializeSnippets(unsigned long long application_id, const wchar_t* data_p
   standard_ready = NVSDK_NGX_SUCCEED(standard_result);
   Log("direct DLSS Init_Ext result=0x%08x ready=%d", standard_result,
       standard_ready ? 1 : 0);
-  const NVSDK_NGX_Result neural_result =
-      nr_init(application_id, data_path, input_device, api_version, feature_info);
-  neural_ready = NVSDK_NGX_SUCCEED(neural_result);
-  Log("DLSSNR Init_Ext result=0x%08x ready=%d", neural_result,
-      neural_ready ? 1 : 0);
   native_host_ready = NativeHostConnect(&native_host_info);
   if (native_host_ready) {
     const bool ping = NativeHostPing();
@@ -157,6 +153,19 @@ void InitializeSnippets(unsigned long long application_id, const wchar_t* data_p
         native_host_info.tensors,
         static_cast<unsigned long long>(native_host_info.capabilities),
         native_host_info.text);
+  }
+  if (native_host_ready) {
+    neural_ready = false;
+    Log("vendor DLSSNR execution skipped because native host owns the NR model");
+  } else if (nr_init && nr_create && nr_evaluate && nr_release && nr_shutdown) {
+    const NVSDK_NGX_Result neural_result =
+        nr_init(application_id, data_path, input_device, api_version, feature_info);
+    neural_ready = NVSDK_NGX_SUCCEED(neural_result);
+    Log("DLSSNR Init_Ext result=0x%08x ready=%d", neural_result,
+        neural_ready ? 1 : 0);
+  } else {
+    neural_ready = false;
+    Log("DLSSNR runtime unavailable: no native host and vendor bridge incomplete");
   }
   snippets_initialized = true;
 }
